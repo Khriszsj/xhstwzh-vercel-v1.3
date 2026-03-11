@@ -190,6 +190,7 @@ button:disabled {
 .page-thumb-btn {
   position: relative;
   width: 100%;
+  flex-shrink: 0;
   border: 1.5px solid var(--stroke);
   border-radius: var(--radius-md);
   background: var(--soft);

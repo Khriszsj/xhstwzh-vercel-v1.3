@@ -146,11 +146,32 @@ export default function HomePage() {
   const scrollToPage = useCallback((pageNo: number) => {
     const nodeId = pageFirstNodeId[pageNo];
     if (!nodeId) return;
-    const el =
-      document.querySelector<HTMLElement>(`p[data-node-id="${nodeId}"]`) ??
-      document.querySelector<HTMLElement>(`figure[data-node-id="${nodeId}"]`);
-    el?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [pageFirstNodeId]);
+
+    const editorRoot = document.querySelector<HTMLElement>(".editor-root");
+    const editorCanvas = editorRoot?.querySelector<HTMLElement>(".editor-canvas");
+    if (!editorRoot || !editorCanvas) return;
+
+    // Fast path: find by data-node-id (present after innerHTML reset)
+    let el: HTMLElement | null =
+      editorCanvas.querySelector<HTMLElement>(`[data-node-id="${nodeId}"]`);
+
+    // Fallback: find by index in doc nodes (works after paste when data-node-id is missing)
+    if (!el) {
+      const nodeIndex = project.doc.nodes.findIndex((n) => n.id === nodeId);
+      if (nodeIndex >= 0 && nodeIndex < editorCanvas.children.length) {
+        el = editorCanvas.children[nodeIndex] as HTMLElement;
+      }
+    }
+
+    if (!el) return;
+
+    const elRect = el.getBoundingClientRect();
+    const containerRect = editorRoot.getBoundingClientRect();
+    editorRoot.scrollTo({
+      top: editorRoot.scrollTop + elRect.top - containerRect.top - 12,
+      behavior: "smooth",
+    });
+  }, [pageFirstNodeId, project.doc.nodes]);
 
   const filteredBackgrounds = useMemo(
     () => filterByKeyword(BACKGROUND_PRESETS, presetKeyword, (item) => `${item.name} ${item.description}`),

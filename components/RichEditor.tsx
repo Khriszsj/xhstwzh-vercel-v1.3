@@ -468,6 +468,8 @@ export function RichEditor({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadMessage, setUploadMessage] = useState("");
   const [fontSize, setFontSize] = useState(36);
+  // 字号输入框的本地显示值（字符串），允许用户自由编辑后再应用
+  const [fontSizeInput, setFontSizeInput] = useState("36");
   const [lineHeight, setLineHeight] = useState(1.6);
   const [letterSpacing, setLetterSpacing] = useState(0);
   const [inlinePadding, setInlinePadding] = useState(0);
@@ -521,7 +523,10 @@ export function RichEditor({
     const computed = window.getComputedStyle(probe);
     const computedFontSize = parseFloat(computed.fontSize);
     const nextFontSize = Number.isFinite(computedFontSize) ? Math.round(computedFontSize) : 36;
-    setFontSize(Math.max(10, Math.min(70, nextFontSize)));
+    const clampedFontSize = Math.max(10, Math.min(70, nextFontSize));
+    setFontSize(clampedFontSize);
+    // 同步更新输入框显示值
+    setFontSizeInput(String(clampedFontSize));
 
     const lineHeightRaw = computed.lineHeight;
     const lineHeightPx =
@@ -1398,12 +1403,38 @@ export function RichEditor({
             min={10}
             max={70}
             step={1}
-            value={fontSize}
+            value={fontSizeInput}
             onMouseDown={() => { lockSelectionAsSpan(); }}
-            onFocus={() => { lockSelectionAsSpan(); }}
+            onFocus={(event) => {
+              // 获得焦点时锁定选区，并全选输入框内容方便覆盖输入
+              lockSelectionAsSpan();
+              event.target.select();
+            }}
             onChange={(event) => {
+              // 允许用户自由编辑，只更新显示值，不立即应用
+              setFontSizeInput(event.target.value);
+            }}
+            onBlur={(event) => {
+              // 失焦时解析并应用字号
               const v = Number(event.target.value);
-              if (v >= 10 && v <= 70) updateFontSize(v);
+              if (Number.isFinite(v) && v >= 10 && v <= 70) {
+                updateFontSize(Math.round(v));
+              } else {
+                // 非法值：恢复为当前字号
+                setFontSizeInput(String(fontSize));
+              }
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                // 按 Enter 时应用字号
+                const v = Number((event.target as HTMLInputElement).value);
+                if (Number.isFinite(v) && v >= 10 && v <= 70) {
+                  updateFontSize(Math.round(v));
+                } else {
+                  setFontSizeInput(String(fontSize));
+                }
+                (event.target as HTMLInputElement).blur();
+              }
             }}
           />
           <span className="style-value">px</span>
